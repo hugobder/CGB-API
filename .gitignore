@@ -1,0 +1,9 @@
+/target/
+/db/
+/.settings
+/db_bup
+src/.DS_Store
+src/main/.DS_Store
+src/main/java/.DS_Store
+src/main/java/cgb/.DS_Store
+.DS_Store
