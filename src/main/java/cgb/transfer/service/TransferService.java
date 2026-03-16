@@ -37,7 +37,10 @@ public class TransferService {
         /*Pas de découvert autorisé*/
         if (sourceAccount.getSolde().compareTo(amount) < 0) {
             throw new RuntimeException("Insufficient funds");
-        }else {
+        } else {
+
+        /*Pas de virement négatif autorisé*/
+        if (amount < 0 ) throw new RuntimeException("Negative transfer forbidden");
 
         sourceAccount.setSolde(sourceAccount.getSolde()-(amount)); 
         destinationAccount.setSolde(destinationAccount.getSolde()+(amount));

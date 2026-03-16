@@ -3,7 +3,6 @@ package cgb.utils;
 import cgb.transfer.exception.InvalidIbanFormatException;
 import cgb.transfer.exception.InvalidUnCheckableIbanException;
 import org.apache.commons.validator.routines.IBANValidator;
-import org.springframework.core.type.filter.RegexPatternTypeFilter;
 
 public class IbanValidator {
     private static IbanValidator instance = null;
