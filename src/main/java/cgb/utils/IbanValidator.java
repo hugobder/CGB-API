@@ -1,5 +1,8 @@
 package cgb.utils;
 
+import cgb.transfer.exception.InvalidIbanFormatException;
+import cgb.transfer.exception.InvalidUnCheckableIbanException;
+import org.apache.commons.validator.routines.IBANValidator;
 import org.springframework.core.type.filter.RegexPatternTypeFilter;
 
 public class IbanValidator {
@@ -27,14 +30,29 @@ public class IbanValidator {
     }
 
     public boolean isIbanStructureValid(String iban) {
+        if (iban == null || iban.length() < 5) {
+            return false;
+        }
         boolean isValidCountryCode = getCountryCode(iban).matches("[A-Z]{2}");
-        boolean isValidControlNumbers = true;
-        boolean isValidAccountNumbers = getAccountNumber(iban).;
+        boolean isValidControlNumbers = getControlNumber(iban).matches("\\d{2}");
+        boolean isValidAccountNumbers = getAccountNumber(iban).matches("\\w+");
 
-        return true; //TODO
+        if ( !(isValidCountryCode && isValidControlNumbers && isValidAccountNumbers) ) {
+            throw new InvalidIbanFormatException("Invalid IBAN format.");
+        }
+        return true;
     }
 
     public boolean isIbanValid(String iban) {
-        return true; //TODO
+        if (iban == null || iban.isEmpty()) {
+            return false;
+        }
+        IBANValidator ibv = IBANValidator.getInstance();
+
+        if ( !ibv.isValid(iban) ) {
+            throw new InvalidUnCheckableIbanException("Invalid IBAN.");
+        }
+
+        return ibv.isValid(iban);
     }
 }
