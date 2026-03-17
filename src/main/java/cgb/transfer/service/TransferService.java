@@ -1,16 +1,23 @@
 package cgb.transfer.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import cgb.transfer.entity.Account;
+import cgb.transfer.dto.LotItemRequest;
+import cgb.transfer.entity.Lot;
 import cgb.transfer.entity.Transfer;
-import cgb.transfer.exception.*;
+import cgb.transfer.entity.TransferStatus;
+import cgb.transfer.exception.DeleteTransferException;
 import cgb.transfer.exception.DeleteTransferException.FailureTransfert;
 import cgb.transfer.repository.AccountRepository;
+import cgb.transfer.repository.LotRepository;
 import cgb.transfer.repository.TransferRepository;
+import cgb.transfer.entity.Account;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -22,7 +29,10 @@ public class TransferService {
     @Autowired
     private TransferRepository transferRepository;
 
-    
+    @Autowired
+    private LotRepository lotRepository;
+
+
     /*
      * Rappel du cours sur les transactions... Tout ou rien
      */
@@ -39,35 +49,114 @@ public class TransferService {
             throw new RuntimeException("Insufficient funds");
         } else {
 
-        /*Pas de virement négatif autorisé*/
-        if (amount < 0 ) throw new RuntimeException("Negative transfer forbidden");
+            /*Pas de virement négatif autorisé*/
+            if (amount < 0 ) throw new RuntimeException("Negative transfer forbidden");
 
-        sourceAccount.setSolde(sourceAccount.getSolde()-(amount)); 
-        destinationAccount.setSolde(destinationAccount.getSolde()+(amount));
+            sourceAccount.setSolde(sourceAccount.getSolde()-(amount));
+            destinationAccount.setSolde(destinationAccount.getSolde()+(amount));
 
-        accountRepository.save(sourceAccount);
-        accountRepository.save(destinationAccount);
+            accountRepository.save(sourceAccount);
+            accountRepository.save(destinationAccount);
 
+            Transfer transfer = new Transfer();
+            transfer.setSourceAccountNumber(sourceAccountNumber);
+            transfer.setDestinationAccountNumber(destinationAccountNumber);
+            transfer.setAmount(amount);
+            transfer.setTransferDate(transferDate);
+            transfer.setDescription(description);
+            transfer.setStatus(TransferStatus.SUCCESS);
+
+            return transferRepository.save(transfer);
+        }
+
+    }
+
+    /**
+     * Crée un lot en base avec le statut WAITING et le retourne immédiatement.
+     */
+    @Transactional
+    public Lot createLot() {
+        Lot lot = new Lot();
+        lot.setDateLancement(LocalDate.now());
+        lot.setEtat(TransferStatus.WAITING);
+        return lotRepository.save(lot);
+    }
+
+    /**
+     * Traitement asynchrone du lot : chaque virement est indépendant.
+     * Les virements en échec sont sauvegardés avec le statut FAILURE pour rejeu ultérieur.
+     */
+    @Async
+    public void processLotAsync(Long lotId, String sourceAccountNumber, List<LotItemRequest> items) {
+        int successCount = 0;
+        int failureCount = 0;
+
+        for (LotItemRequest item : items) {
+            Transfer transfer = createTransferForLot(
+                    sourceAccountNumber,
+                    item.getDestAccount(),
+                    item.getAmount(),
+                    item.getDescription(),
+                    lotId
+            );
+            if (transfer.getStatus() == TransferStatus.SUCCESS) {
+                successCount++;
+            } else {
+                failureCount++;
+            }
+        }
+
+        // Mise à jour du statut du lot
+        Lot lot = lotRepository.findById(lotId).orElseThrow();
+        lot.setEtat(failureCount == 0 ? TransferStatus.SUCCESS : TransferStatus.FAILURE);
+        lotRepository.save(lot);
+    }
+
+    /**
+     * Traite un virement dans sa propre transaction (REQUIRES_NEW).
+     * En cas d'échec, sauvegarde le virement avec le statut FAILURE sans modifier les soldes.
+     */
+    @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Transfer createTransferForLot(String sourceAccountNumber, String destinationAccountNumber,
+                                         Double amount, String description, Long lotId) {
         Transfer transfer = new Transfer();
         transfer.setSourceAccountNumber(sourceAccountNumber);
         transfer.setDestinationAccountNumber(destinationAccountNumber);
         transfer.setAmount(amount);
-        transfer.setTransferDate(transferDate);
         transfer.setDescription(description);
+        transfer.setTransferDate(LocalDate.now());
+        transfer.setLotId(lotId);
+        transfer.setStatus(TransferStatus.FAILURE); // défaut : echec
+
+        try {
+            if (amount == null || amount < 0) throw new RuntimeException("Negative or null amount forbidden");
+
+            Account sourceAccount = accountRepository.findById(sourceAccountNumber)
+                    .orElseThrow(() -> new RuntimeException("Source account not found"));
+            Account destinationAccount = accountRepository.findById(destinationAccountNumber)
+                    .orElseThrow(() -> new RuntimeException("Destination account not found"));
+
+            if (sourceAccount.getSolde().compareTo(amount) < 0)
+                throw new RuntimeException("Insufficient funds");
+
+            sourceAccount.setSolde(sourceAccount.getSolde() - amount);
+            destinationAccount.setSolde(destinationAccount.getSolde() + amount);
+            accountRepository.save(sourceAccount);
+            accountRepository.save(destinationAccount);
+
+            transfer.setStatus(TransferStatus.SUCCESS);
+        } catch (RuntimeException e) {
+            // Statut reste FAILURE, aucune modification des soldes
+        }
 
         return transferRepository.save(transfer);
-        }
-        
     }
-    
-    
+
     @Transactional
     public Transfer deleteTransfer(Long id) throws DeleteTransferException {
     	Optional<Transfer> otranfer=transferRepository.findById(id);
     	transferRepository.deleteById(id);
-    	if (otranfer.isEmpty())throw new DeleteTransferException(FailureTransfert.OBJECT_NOT_FOUND); 
+    	if (otranfer.isEmpty())throw new DeleteTransferException(FailureTransfert.OBJECT_NOT_FOUND);
     	return otranfer.orElse(null);
     }
 }
-
-

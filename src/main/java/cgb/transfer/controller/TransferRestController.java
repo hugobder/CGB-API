@@ -1,9 +1,10 @@
 package cgb.transfer.controller;
 
+import cgb.transfer.dto.LotRequest;
+import cgb.transfer.dto.LotResponse;
+import cgb.transfer.entity.Lot;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +14,6 @@ import cgb.transfer.service.TransferService;
 import cgb.transfer.exception.*;
 
 import java.time.LocalDate;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/transfers")
@@ -22,8 +22,13 @@ public class TransferRestController {
     @Autowired
     private TransferService transferService;
 
-
-    
+    @PostMapping("/lots")
+    public ResponseEntity<?> createTransferLots(@RequestBody LotRequest lotRequest) {
+        Lot lot = transferService.createLot();
+        transferService.processLotAsync(lot.getId(), lotRequest.getSourceAccountNumber(), lotRequest.getTransfers());
+        LotResponse response = new LotResponse(lot.getId(), lot.getDateLancement(), "Traitement Lancé", lot.getEtat().name());
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping
     public ResponseEntity<?> createTransfer(@RequestBody TransferRequest transferRequest) {
@@ -33,7 +38,7 @@ public class TransferRestController {
                 transferRequest.getSourceAccountNumber(),
                 transferRequest.getDestinationAccountNumber(),
                 transferRequest.getAmount(),
-                transferRequest.getTransferDate(),
+                LocalDate.now(),
                 transferRequest.getDescription()
         );
     	return ResponseEntity.ok(transfer);

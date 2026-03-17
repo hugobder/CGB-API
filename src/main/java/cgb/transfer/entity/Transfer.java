@@ -15,6 +15,11 @@ public class Transfer {
     private LocalDate transferDate;
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    private TransferStatus status;
+
+    private Long lotId;
+
     // Getters and Setters with lombok
     
     public Long getId() {
@@ -53,5 +58,11 @@ public class Transfer {
 	public void setDescription(String description) {
 		this.description = description;
 	}
+
+	public TransferStatus getStatus() { return status; }
+	public void setStatus(TransferStatus status) { this.status = status; }
+
+	public Long getLotId() { return lotId; }
+	public void setLotId(Long lotId) { this.lotId = lotId; }
 
 }
