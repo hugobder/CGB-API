@@ -24,9 +24,9 @@ public class TransferRestController {
 
     @PostMapping("/lots")
     public ResponseEntity<?> createTransferLots(@RequestBody LotRequest lotRequest) {
-        Lot lot = transferService.createLot();
-        transferService.processLotAsync(lot.getId(), lotRequest.getSourceAccountNumber(), lotRequest.getTransfers());
-        LotResponse response = new LotResponse(lot.getId(), lot.getDateLancement(), "Traitement Lancé", lot.getEtat().name());
+        Lot lot = transferService.createLot(lotRequest.getRefLot(), lotRequest.getDescriptionLot());
+        transferService.processLotAsync(lot.getId(), lotRequest.getSourceAccount(), lotRequest.getVirements());
+        LotResponse response = new LotResponse(lot.getId(), lot.getDateLancement(), "Traitement Lancé", lot.getEtat().name().toLowerCase());
         return ResponseEntity.ok(response);
     }
 
@@ -42,7 +42,7 @@ public class TransferRestController {
                 transferRequest.getDescription()
         );
     	return ResponseEntity.ok(transfer);
-        }catch (RuntimeException e) {
+        } catch (RuntimeException e) {
             TransferResponse errorResponse = new TransferResponse("FAILURE", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }        

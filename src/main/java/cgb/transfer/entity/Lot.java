@@ -11,6 +11,8 @@ public class Lot {
     private Long id;
 
     private LocalDate dateLancement;
+    private String refLot;
+    private String descriptionLot;
 
     @Enumerated(EnumType.STRING)
     private TransferStatus etat;
@@ -20,6 +22,12 @@ public class Lot {
 
     public LocalDate getDateLancement() { return dateLancement; }
     public void setDateLancement(LocalDate dateLancement) { this.dateLancement = dateLancement; }
+
+    public String getRefLot() { return refLot; }
+    public void setRefLot(String refLot) { this.refLot = refLot; }
+
+    public String getDescriptionLot() { return descriptionLot; }
+    public void setDescriptionLot(String descriptionLot) { this.descriptionLot = descriptionLot; }
 
     public TransferStatus getEtat() { return etat; }
     public void setEtat(TransferStatus etat) { this.etat = etat; }

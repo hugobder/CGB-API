@@ -4,12 +4,20 @@ import java.util.List;
 
 public class LotRequest {
 
-    private String sourceAccountNumber;
-    private List<LotItemRequest> transfers;
+    private String refLot;
+    private String sourceAccount;
+    private String descriptionLot;
+    private List<LotItemRequest> virements;
 
-    public String getSourceAccountNumber() { return sourceAccountNumber; }
-    public void setSourceAccountNumber(String sourceAccountNumber) { this.sourceAccountNumber = sourceAccountNumber; }
+    public String getSourceAccount() { return sourceAccount; }
+    public void setSourceAccount(String sourceAccount) { this.sourceAccount = sourceAccount; }
 
-    public List<LotItemRequest> getTransfers() { return transfers; }
-    public void setTransfers(List<LotItemRequest> transfers) { this.transfers = transfers; }
+    public String getDescriptionLot() { return descriptionLot; }
+    public void setDescriptionLot(String descriptionLot) { this.descriptionLot = descriptionLot; }
+
+    public List<LotItemRequest> getVirements() { return virements; }
+    public void setVirements(List<LotItemRequest> virements) { this.virements = virements; }
+
+    public String getRefLot() { return refLot; }
+    public void setRefLot(String refLot) { this.refLot = refLot; }
 }

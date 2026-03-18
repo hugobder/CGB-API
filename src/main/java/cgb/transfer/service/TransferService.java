@@ -75,10 +75,12 @@ public class TransferService {
      * Crée un lot en base avec le statut WAITING et le retourne immédiatement.
      */
     @Transactional
-    public Lot createLot() {
+    public Lot createLot(String refLot, String descriptionLot) {
         Lot lot = new Lot();
         lot.setDateLancement(LocalDate.now());
-        lot.setEtat(TransferStatus.WAITING);
+        lot.setRefLot(refLot);
+        lot.setDescriptionLot(descriptionLot);
+        lot.setEtat(TransferStatus.RECEIVED);
         return lotRepository.save(lot);
     }
 
@@ -108,7 +110,7 @@ public class TransferService {
 
         // Mise à jour du statut du lot
         Lot lot = lotRepository.findById(lotId).orElseThrow();
-        lot.setEtat(failureCount == 0 ? TransferStatus.SUCCESS : TransferStatus.FAILURE);
+        lot.setEtat(TransferStatus.CLOSED);
         lotRepository.save(lot);
     }
 

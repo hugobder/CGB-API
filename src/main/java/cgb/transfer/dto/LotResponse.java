@@ -4,10 +4,10 @@ import java.time.LocalDate;
 
 public class LotResponse {
 
-    private Long numLot;
-    private LocalDate dateLancement;
-    private String message;
-    private String etat;
+    private final Long numLot;
+    private final LocalDate dateLancement;
+    private final String message;
+    private final String etat;
 
     public LotResponse(Long numLot, LocalDate dateLancement, String message, String etat) {
         this.numLot = numLot;
