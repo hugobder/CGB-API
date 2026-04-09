@@ -6,6 +6,7 @@ import cgb.transfer.entity.Transfer;
 import cgb.transfer.entity.TransferStatus;
 import cgb.transfer.exception.DeleteTransferException;
 import cgb.transfer.exception.DeleteTransferException.FailureTransfert;
+import cgb.transfer.exception.TransferException;
 import cgb.transfer.repository.AccountRepository;
 import cgb.transfer.repository.LotRepository;
 import cgb.transfer.repository.TransferRepository;
@@ -38,36 +39,36 @@ public class TransferService {
      */
     @Transactional
     public Transfer createTransfer(String sourceAccountNumber, String destinationAccountNumber,
-                                   Double amount, LocalDate transferDate, String description) {
+                                   Double amount, LocalDate transferDate, String description) throws TransferException {
         Account sourceAccount = accountRepository.findById(sourceAccountNumber)
-                				.orElseThrow(() -> new RuntimeException("Source account not found"));
+                				.orElseThrow(() -> new TransferException("Source account not found"));
         Account destinationAccount = accountRepository.findById(destinationAccountNumber)
-                				.orElseThrow(() -> new RuntimeException("Destination account not found"));
+                				.orElseThrow(() -> new TransferException("Destination account not found"));
 
         /*Pas de découvert autorisé*/
-        if (sourceAccount.getSolde().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient funds");
-        } else {
+        if (sourceAccount.getSolde().compareTo(amount) < 0)  throw new TransferException("Insufficient funds");
 
-            /*Pas de virement négatif autorisé*/
-            if (amount < 0 ) throw new RuntimeException("Negative transfer forbidden");
+        /*Pas de virement négatif autorisé*/
+        if (amount < 0 ) throw new TransferException("Negative transfer forbidden");
 
-            sourceAccount.setSolde(sourceAccount.getSolde()-(amount));
-            destinationAccount.setSolde(destinationAccount.getSolde()+(amount));
+        /*Pas de virement antidaté*/
+        if (transferDate.isBefore(LocalDate.now())) throw new TransferException("Backdated transfer forbidden");
 
-            accountRepository.save(sourceAccount);
-            accountRepository.save(destinationAccount);
+        sourceAccount.setSolde(sourceAccount.getSolde()-(amount));
+        destinationAccount.setSolde(destinationAccount.getSolde()+(amount));
 
-            Transfer transfer = new Transfer();
-            transfer.setSourceAccountNumber(sourceAccountNumber);
-            transfer.setDestinationAccountNumber(destinationAccountNumber);
-            transfer.setAmount(amount);
-            transfer.setTransferDate(transferDate);
-            transfer.setDescription(description);
-            transfer.setStatus(TransferStatus.SUCCESS);
+        accountRepository.save(sourceAccount);
+        accountRepository.save(destinationAccount);
 
-            return transferRepository.save(transfer);
-        }
+        Transfer transfer = new Transfer();
+        transfer.setSourceAccountNumber(sourceAccountNumber);
+        transfer.setDestinationAccountNumber(destinationAccountNumber);
+        transfer.setAmount(amount);
+        transfer.setTransferDate(transferDate);
+        transfer.setDescription(description);
+        transfer.setStatus(TransferStatus.SUCCESS);
+
+        return transferRepository.save(transfer);
 
     }
 
@@ -75,7 +76,7 @@ public class TransferService {
      * Crée un lot en base avec le statut WAITING et le retourne immédiatement.
      */
     @Transactional
-    public Lot createLot(String refLot, String descriptionLot) {
+    public Lot  createLot(String refLot, String descriptionLot) {
         Lot lot = new Lot();
         lot.setDateLancement(LocalDate.now());
         lot.setRefLot(refLot);
@@ -93,6 +94,8 @@ public class TransferService {
         int successCount = 0;
         int failureCount = 0;
 
+        accountRepository.findById(sourceAccountNumber).orElseThrow();
+        // TODO: replace the call of the transactional method
         for (LotItemRequest item : items) {
             Transfer transfer = createTransferForLot(
                     sourceAccountNumber,

@@ -20,6 +20,10 @@ public class Transfer {
 
     private Long lotId;
 
+	public Transfer() {
+		this.transferDate = LocalDate.now();
+	}
+
     // Getters and Setters with lombok
     
     public Long getId() {

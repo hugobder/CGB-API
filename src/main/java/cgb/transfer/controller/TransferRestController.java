@@ -22,27 +22,18 @@ public class TransferRestController {
     @Autowired
     private TransferService transferService;
 
-    @PostMapping("/lots")
-    public ResponseEntity<?> createTransferLots(@RequestBody LotRequest lotRequest) {
-        Lot lot = transferService.createLot(lotRequest.getRefLot(), lotRequest.getDescriptionLot());
-        transferService.processLotAsync(lot.getId(), lotRequest.getSourceAccount(), lotRequest.getVirements());
-        LotResponse response = new LotResponse(lot.getId(), lot.getDateLancement(), "Traitement Lancé", lot.getEtat().name().toLowerCase());
-        return ResponseEntity.ok(response);
-    }
-
     @PostMapping
     public ResponseEntity<?> createTransfer(@RequestBody TransferRequest transferRequest) {
-    //public ResponseEntity<Transfer> createTransfer(@RequestBody TransferRequest transferRequest) {
         try {
     	Transfer transfer = transferService.createTransfer(
                 transferRequest.getSourceAccountNumber(),
                 transferRequest.getDestinationAccountNumber(),
                 transferRequest.getAmount(),
-                LocalDate.now(),
+                transferRequest.getTransferDate(),
                 transferRequest.getDescription()
         );
     	return ResponseEntity.ok(transfer);
-        } catch (RuntimeException e) {
+        } catch (TransferException e) {
             TransferResponse errorResponse = new TransferResponse("FAILURE", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }        
@@ -61,17 +52,15 @@ public class TransferRestController {
             TransferResponse errorResponse = new TransferResponse("FAILURE", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }        
-    }  
-    
+    }
 
-    /*
-    @PostMapping
-    public ResponseEntity<String> testTransfer(@RequestBody String s) {
-    	System.out.println("Post reçu");
-        return ResponseEntity.ok("Post bien traité: "+ s);
-    } 
-    */
-    
+    @PostMapping("/lots")
+    public ResponseEntity<?> createTransferLots(@RequestBody LotRequest lotRequest) {
+        Lot lot = transferService.createLot(lotRequest.getRefLot(), lotRequest.getDescriptionLot());
+        transferService.processLotAsync(lot.getId(), lotRequest.getSourceAccount(), lotRequest.getVirements());
+        LotResponse response = new LotResponse(lot.getId(), lot.getDateLancement(), "Traitement Lancé", lot.getEtat().name().toLowerCase());
+        return ResponseEntity.ok(response);
+    }
 }
 
 
