@@ -134,15 +134,15 @@ public class TransferService {
         transfer.setStatus(TransferStatus.FAILURE); // défaut : echec
 
         try {
-            if (amount == null || amount < 0) throw new RuntimeException("Negative or null amount forbidden");
+            if (amount == null || amount < 0) throw new TransferException("Negative or null amount forbidden");
 
             Account sourceAccount = accountRepository.findById(sourceAccountNumber)
-                    .orElseThrow(() -> new RuntimeException("Source account not found"));
+                    .orElseThrow(() -> new TransferException("Source account not found"));
             Account destinationAccount = accountRepository.findById(destinationAccountNumber)
-                    .orElseThrow(() -> new RuntimeException("Destination account not found"));
+                    .orElseThrow(() -> new TransferException("Destination account not found"));
 
             if (sourceAccount.getSolde().compareTo(amount) < 0)
-                throw new RuntimeException("Insufficient funds");
+                throw new TransferException("Insufficient funds");
 
             sourceAccount.setSolde(sourceAccount.getSolde() - amount);
             destinationAccount.setSolde(destinationAccount.getSolde() + amount);
@@ -150,7 +150,7 @@ public class TransferService {
             accountRepository.save(destinationAccount);
 
             transfer.setStatus(TransferStatus.SUCCESS);
-        } catch (RuntimeException e) {
+        } catch (TransferException e) {
             // Statut reste FAILURE, aucune modification des soldes
         }
 
