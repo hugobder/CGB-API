@@ -67,4 +67,22 @@ public class LotRestController {
     public ResponseEntity<List<TransferLot>> getFailedTransfersByDestAccount(@PathVariable String destAccount) {
         return ResponseEntity.ok(reportService.getFailedTransfersByDestAccount(destAccount));
     }
+
+    @GetMapping("/{id}/replay")
+    public ResponseEntity<?> replayFromDelayed(@PathVariable Long id) {
+        LotRequest replay = lotService.replayFromDelayed(id);
+        if (replay == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Aucun virement a rejouer pour le lot: " + id);
+        }
+        return ResponseEntity.ok(replay);
+    }
+
+    @PostMapping("/replay")
+    public ResponseEntity<?> replayFromIds(@RequestBody List<Long> virementIds) {
+        LotRequest replay = lotService.replayFromIds(virementIds);
+        if (replay == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Aucun virement a rejouer");
+        }
+        return ResponseEntity.ok(replay);
+    }
 }
