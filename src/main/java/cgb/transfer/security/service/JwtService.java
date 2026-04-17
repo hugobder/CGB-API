@@ -1,48 +1,64 @@
 package cgb.transfer.security.service;
 
-import org.springframework.stereotype.Service;
-/* S2
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import cgb.transfer.entity.UserCGB;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
- */
 
 @Service
 public class JwtService {
 
-	private static final String FIXED_TOKEN = "f51a24ca-9486-4f77-97dd-51dad1467a9e";
+    @Value("${jwt.secret}")
+    private String secret;
 
-	public String generateToken(String username) {
-		return FIXED_TOKEN;
-	}
+    @Value("${jwt.expiration}")
+    private long expiration;
 
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+    }
 
-	/* S2
-       private static final String SECRET_KEY = "secret";
-    private static final String FIXED_SUBJECT = "user123";
-
-    public String generateToken() {
+    public String generateToken(UserCGB user) {
         return Jwts.builder()
-                .setSubject(FIXED_SUBJECT)
-                .setIssuedAt(new Date(0)) // Date fixe
-                .setExpiration(new Date(Long.MAX_VALUE)) // Expiration très éloignée
-                .signWith(SignatureAlgorithm.HS256, SECRET_KEY)
+                .subject(user.getUsername())
+                .claim("role", user.getRole().getName())
+                .claim("customerId", user.getBelongTo().getId())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSigningKey())
                 .compact();
     }
-	 */
 
-	//S3
-	//Dans app.properties jwt.fixed.token=f51a24ca-9486-4f77-97dd-51dad1467a9e
-	/*
-	 * import org.springframework.beans.factory.annotation.Value; import
-	 * org.springframework.stereotype.Service;
-	 * 
-	 * @Service public class JwtService {
-	 * 
-	 * @Value("${jwt.fixed.token}") private String fixedToken;
-	 * 
-	 * public String generateToken() { return fixedToken; } }
-	 */
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
+    public String extractUsername(String token) {
+        return getClaims(token).getSubject();
+    }
 
+    public String extractRole(String token) {
+        return getClaims(token).get("role", String.class);
+    }
+
+    public Long extractCustomerId(String token) {
+        return getClaims(token).get("customerId", Long.class);
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parser().verifyWith(getSigningKey()).build()
+                .parseSignedClaims(token).getPayload();
+    }
 }
