@@ -13,6 +13,7 @@ import cgb.transfer.service.TransferService;
 import cgb.transfer.exception.*;
 import cgb.transfer.exception.AccountNotFoundException;
 import cgb.transfer.exception.TransferException;
+import cgb.transfer.exception.UnauthorizedAccountException;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -38,6 +39,9 @@ public class TransferRestController {
                     transferRequest.getDescription()
             );
             return ResponseEntity.ok(transfer);
+        } catch (UnauthorizedAccountException e) {
+            TransferResponse errorResponse = new TransferResponse("FAILURE", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
         } catch (AccountNotFoundException e) {
             TransferResponse errorResponse = new TransferResponse("FAILURE", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
