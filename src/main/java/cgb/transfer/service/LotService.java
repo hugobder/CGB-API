@@ -117,4 +117,43 @@ public class LotService {
     public Lot getLotById(Long id) {
         return lotRepository.findById(id).orElse(null);
     }
+
+    public LotRequest replayFromDelayed(Long lotId) {
+        Lot lot = lotRepository.findById(lotId).orElse(null);
+        if (lot == null) return null;
+
+        List<TransferLot> delayed = transferLotRepository.findByLotIdAndStateIn(lotId, List.of("delayed"));
+        if (delayed.isEmpty()) return null;
+
+        return buildReplayLot(lot, delayed);
+    }
+
+    public LotRequest replayFromIds(List<Long> virementIds) {
+        List<TransferLot> virements = transferLotRepository.findAllById(virementIds);
+        virements = virements.stream().filter(v -> !"success".equals(v.getState())).toList();
+        if (virements.isEmpty()) return null;
+
+        TransferLot first = virements.get(0);
+        Lot lot = first.getLot();
+
+        return buildReplayLot(lot, virements);
+    }
+
+    private LotRequest buildReplayLot(Lot originalLot, List<TransferLot> virements) {
+        LotRequest request = new LotRequest();
+        request.setRefLot(originalLot.getRefLot() + "-REJEU");
+        request.setSourceAccount(originalLot.getSourceAccount());
+        request.setDescriptionLot("REJEU - " + originalLot.getDescriptionLot());
+
+        List<VirementRequest> vrList = new ArrayList<>();
+        for (TransferLot tl : virements) {
+            VirementRequest vr = new VirementRequest();
+            vr.setDestAccount(tl.getDestAccount());
+            vr.setAmount(tl.getAmount());
+            vr.setDescription("REJEU - " + tl.getDescription());
+            vrList.add(vr);
+        }
+        request.setVirements(vrList);
+        return request;
+    }
 }
