@@ -11,6 +11,8 @@ import cgb.transfer.dto.TransferRequest;
 import cgb.transfer.entity.Transfer;
 import cgb.transfer.service.TransferService;
 import cgb.transfer.exception.*;
+import cgb.transfer.exception.AccountNotFoundException;
+import cgb.transfer.exception.TransferException;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -27,20 +29,22 @@ public class TransferRestController {
 
     @PostMapping
     public ResponseEntity<?> createTransfer(@RequestBody TransferRequest transferRequest) {
-    //public ResponseEntity<Transfer> createTransfer(@RequestBody TransferRequest transferRequest) {
         try {
-    	Transfer transfer = transferService.createTransfer(
-                transferRequest.getSourceAccountNumber(),
-                transferRequest.getDestinationAccountNumber(),
-                transferRequest.getAmount(),
-                transferRequest.getTransferDate(),
-                transferRequest.getDescription()
-        );
-    	return ResponseEntity.ok(transfer);
-        }catch (RuntimeException e) {
+            Transfer transfer = transferService.createTransfer(
+                    transferRequest.getSourceAccountNumber(),
+                    transferRequest.getDestinationAccountNumber(),
+                    transferRequest.getAmount(),
+                    transferRequest.getTransferDate(),
+                    transferRequest.getDescription()
+            );
+            return ResponseEntity.ok(transfer);
+        } catch (AccountNotFoundException e) {
+            TransferResponse errorResponse = new TransferResponse("FAILURE", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        } catch (TransferException e) {
             TransferResponse errorResponse = new TransferResponse("FAILURE", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-        }        
+        }
     }  
     
     @DeleteMapping
