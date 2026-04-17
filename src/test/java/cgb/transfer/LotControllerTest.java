@@ -11,8 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,7 +24,6 @@ import cgb.transfer.repository.AccountRepository;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-@WithMockUser(username = "user")
 public class LotControllerTest {
 
     @Autowired private MockMvc mockMvc;
@@ -32,12 +31,22 @@ public class LotControllerTest {
 
     private String sourceIban;
     private String destIban;
+    private String jwtToken;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         List<Account> accounts = accountRepository.findAll();
         sourceIban = accounts.get(0).getAccountNumber();
         destIban = accounts.get(5).getAccountNumber();
+
+        // Login to get JWT token
+        String loginBody = "{\"username\":\"padelphi\",\"password\":\"password123\"}";
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(loginBody))
+                .andReturn();
+        jwtToken = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(result.getResponse().getContentAsString()).get("token").asText();
     }
 
     @Test
@@ -54,6 +63,7 @@ public class LotControllerTest {
         request.setVirements(List.of(vr));
 
         mockMvc.perform(post("/api/lots")
+                .header("Authorization", "Bearer " + jwtToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(new ObjectMapper().findAndRegisterModules().writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -63,7 +73,8 @@ public class LotControllerTest {
 
     @Test
     void testGetLotNotFound() throws Exception {
-        mockMvc.perform(get("/api/lots/99999"))
+        mockMvc.perform(get("/api/lots/99999")
+                .header("Authorization", "Bearer " + jwtToken))
                 .andExpect(status().isNotFound());
     }
 }
