@@ -1,6 +1,7 @@
 package cgb.transfer.exemple;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import cgb.transfer.entity.Account;
@@ -23,16 +24,19 @@ public class DatabaseInitializer {
     private final RoleRepository roleRepository;
     private final UserCGBRepository userCGBRepository;
     private final CustomerRepository customerRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public DatabaseInitializer(AccountRepository accountRepository,
                                RoleRepository roleRepository,
                                UserCGBRepository userCGBRepository,
-                               CustomerRepository customerRepository) {
+                               CustomerRepository customerRepository,
+                               PasswordEncoder passwordEncoder) {
         this.accountRepository = accountRepository;
         this.roleRepository = roleRepository;
         this.userCGBRepository = userCGBRepository;
         this.customerRepository = customerRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @PostConstruct
@@ -79,7 +83,7 @@ public class DatabaseInitializer {
         // Create users
         UserCGB phil = new UserCGB();
         phil.setUsername("padelphi");
-        phil.setPassword("password123");
+        phil.setPassword(passwordEncoder.encode("password123"));
         phil.setEmail("phil.adelphi@gsb.com");
         phil.setRole(comptable);
         phil.setBelongTo(gsb);
@@ -87,7 +91,7 @@ public class DatabaseInitializer {
 
         UserCGB pat = new UserCGB();
         pat.setUsername("patchaude");
-        pat.setPassword("password123");
+        pat.setPassword(passwordEncoder.encode("password123"));
         pat.setEmail("pat.atchaude@gsb.com");
         pat.setRole(utilisateur);
         pat.setBelongTo(gsb);
