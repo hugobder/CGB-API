@@ -72,54 +72,17 @@ public class TransferService {
 
     }
 
-    /**
-     * Crée un lot en base avec le statut WAITING et le retourne immédiatement.
-     */
     @Transactional
-    public Lot  createLot(String refLot, String descriptionLot) {
-        Lot lot = new Lot();
-        lot.setDateLancement(LocalDate.now());
-        lot.setRefLot(refLot);
-        lot.setDescriptionLot(descriptionLot);
-        lot.setEtat(TransferStatus.RECEIVED);
-        return lotRepository.save(lot);
+    public Transfer deleteTransfer(Long id) throws DeleteTransferException {
+    	Optional<Transfer> otranfer=transferRepository.findById(id);
+    	transferRepository.deleteById(id);
+    	if (otranfer.isEmpty())throw new DeleteTransferException(FailureTransfert.OBJECT_NOT_FOUND);
+    	return otranfer.orElse(null);
     }
 
     /**
-     * Traitement asynchrone du lot : chaque virement est indépendant.
-     * Les virements en échec sont sauvegardés avec le statut FAILURE pour rejeu ultérieur.
-     */
-    @Async
-    public void processLotAsync(Long lotId, String sourceAccountNumber, List<LotItemRequest> items) {
-        int successCount = 0;
-        int failureCount = 0;
-
-        accountRepository.findById(sourceAccountNumber).orElseThrow();
-        // TODO: replace the call of the transactional method
-        for (LotItemRequest item : items) {
-            Transfer transfer = createTransferForLot(
-                    sourceAccountNumber,
-                    item.getDestAccount(),
-                    item.getAmount(),
-                    item.getDescription(),
-                    lotId
-            );
-            if (transfer.getStatus() == TransferStatus.SUCCESS) {
-                successCount++;
-            } else {
-                failureCount++;
-            }
-        }
-
-        // Mise à jour du statut du lot
-        Lot lot = lotRepository.findById(lotId).orElseThrow();
-        lot.setEtat(TransferStatus.CLOSED);
-        lotRepository.save(lot);
-    }
-
-    /**
-     * Traite un virement dans sa propre transaction (REQUIRES_NEW).
-     * En cas d'échec, sauvegarde le virement avec le statut FAILURE sans modifier les soldes.
+     * Traite un virement dans sa propre transaction.
+     * En cas d'échec, sauvegarde le virement avec le statut FAILURE/DELAYED sans modifier les soldes.
      */
     @org.springframework.transaction.annotation.Transactional(propagation = Propagation.REQUIRES_NEW)
     public Transfer createTransferForLot(String sourceAccountNumber, String destinationAccountNumber,
@@ -131,18 +94,29 @@ public class TransferService {
         transfer.setDescription(description);
         transfer.setTransferDate(LocalDate.now());
         transfer.setLotId(lotId);
-        transfer.setStatus(TransferStatus.FAILURE); // défaut : echec
+        transfer.setStatus(TransferStatus.WAITING);
 
         try {
             if (amount == null || amount < 0) throw new TransferException("Negative or null amount forbidden");
 
-            Account sourceAccount = accountRepository.findById(sourceAccountNumber)
-                    .orElseThrow(() -> new TransferException("Source account not found"));
-            Account destinationAccount = accountRepository.findById(destinationAccountNumber)
-                    .orElseThrow(() -> new TransferException("Destination account not found"));
+            Account sourceAccount = accountRepository.findById(sourceAccountNumber).orElseThrow(
+                    () -> {
+                        transfer.setStatus(TransferStatus.FAILURE);
+                        return new TransferException("Source account not found");
+                    }
+            );
 
-            if (sourceAccount.getSolde().compareTo(amount) < 0)
+            Account destinationAccount = accountRepository.findById(destinationAccountNumber).orElseThrow(
+                    () -> {
+                        transfer.setStatus(TransferStatus.FAILURE);
+                        return new TransferException("Destination account not found");
+                    }
+            );
+
+            if (sourceAccount.getSolde().compareTo(amount) < 0) {
+                transfer.setStatus(TransferStatus.DELAYED); // fonds insuffisants, à rejouer ultérieurement
                 throw new TransferException("Insufficient funds");
+            }
 
             sourceAccount.setSolde(sourceAccount.getSolde() - amount);
             destinationAccount.setSolde(destinationAccount.getSolde() + amount);
@@ -155,13 +129,5 @@ public class TransferService {
         }
 
         return transferRepository.save(transfer);
-    }
-
-    @Transactional
-    public Transfer deleteTransfer(Long id) throws DeleteTransferException {
-    	Optional<Transfer> otranfer=transferRepository.findById(id);
-    	transferRepository.deleteById(id);
-    	if (otranfer.isEmpty())throw new DeleteTransferException(FailureTransfert.OBJECT_NOT_FOUND);
-    	return otranfer.orElse(null);
     }
 }

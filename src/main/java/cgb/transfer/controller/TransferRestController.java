@@ -53,14 +53,6 @@ public class TransferRestController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
         }        
     }
-
-    @PostMapping("/lots")
-    public ResponseEntity<?> createTransferLots(@RequestBody LotRequest lotRequest) {
-        Lot lot = transferService.createLot(lotRequest.getRefLot(), lotRequest.getDescriptionLot());
-        transferService.processLotAsync(lot.getId(), lotRequest.getSourceAccount(), lotRequest.getVirements());
-        LotResponse response = new LotResponse(lot.getId(), lot.getDateLancement(), "Traitement Lancé", lot.getEtat().name().toLowerCase());
-        return ResponseEntity.ok(response);
-    }
 }
 
 
